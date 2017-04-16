@@ -4,6 +4,7 @@ import android.content.ContentValues;
 import android.content.DialogInterface;
 import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
+import android.support.design.widget.FloatingActionButton;
 import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
@@ -34,6 +35,13 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
+        FloatingActionButton addTaskButton = (FloatingActionButton)  findViewById(R.id.action_add_task);
+        addTaskButton.setOnClickListener(new View.OnClickListener() {
+            public void onClick(View v) {
+                addTask();
+            }
+        });
+
         mTaskListView = (ListView) findViewById(R.id.list);
         mHelper = new TaskDBHelper(this);
         updateUI();
@@ -62,6 +70,29 @@ public class MainActivity extends AppCompatActivity {
         db.close();
     }
 
+    public void addTask(){
+        final EditText taskEditText = new EditText(this);
+        AlertDialog.Builder alertDialogBuilder = new AlertDialog.Builder(this)
+                .setTitle("Add task_row")
+                .setView(taskEditText)
+                .setPositiveButton("Add", new DialogInterface.OnClickListener(){
+                    @Override
+                    public void onClick(DialogInterface dialog, int which){
+                        String task = String.valueOf(taskEditText.getText());
+                        SQLiteDatabase db = mHelper.getWritableDatabase();
+                        ContentValues values = new ContentValues();
+                        values.put(TaskContract.TaskEntry.COL_TASK_TITLE, task);
+                        db.insertWithOnConflict(TaskContract.TaskEntry.TABLE, null, values, SQLiteDatabase.CONFLICT_REPLACE);
+                        db.close();
+                        updateUI();
+                        Log.d(TAG, "Adding task_row to db: " + task);
+                    }
+                })
+                .setNegativeButton("Cancel", null);
+        AlertDialog dialog = alertDialogBuilder.show();
+        dialog.show();
+    }
+
     public void deleteTask(View view){
         View parent = (View) view.getParent();
         TextView taskTextView = (TextView) parent.findViewById(R.id.task_title);
@@ -76,35 +107,5 @@ public class MainActivity extends AppCompatActivity {
     public boolean onCreateOptionsMenu(Menu menu) {
         getMenuInflater().inflate(R.menu.main_menu, menu);
         return super.onCreateOptionsMenu(menu);
-    }
-
-    @Override
-    public boolean onOptionsItemSelected(MenuItem item) {
-        switch (item.getItemId()) {
-            case R.id.action_add_task:
-                final EditText taskEditText = new EditText(this);
-                AlertDialog.Builder alertDialogBuilder = new AlertDialog.Builder(this)
-                        .setTitle("Add task_row")
-                        .setView(taskEditText)
-                        .setPositiveButton("Add", new DialogInterface.OnClickListener(){
-                            @Override
-                            public void onClick(DialogInterface dialog, int which){
-                                String task = String.valueOf(taskEditText.getText());
-                                SQLiteDatabase db = mHelper.getWritableDatabase();
-                                ContentValues values = new ContentValues();
-                                values.put(TaskContract.TaskEntry.COL_TASK_TITLE, task);
-                                db.insertWithOnConflict(TaskContract.TaskEntry.TABLE, null, values, SQLiteDatabase.CONFLICT_REPLACE);
-                                db.close();
-                                updateUI();
-                                Log.d(TAG, "Adding task_row to db: " + task);
-                            }
-                        })
-                        .setNegativeButton("Cancel", null);
-                AlertDialog dialog = alertDialogBuilder.show();
-                dialog.show();
-                return true;
-            default:
-                return super.onOptionsItemSelected(item);
-        }
     }
 }
