@@ -1,7 +1,6 @@
 package ca.jacobsm.todo;
 
 import android.content.DialogInterface;
-import android.database.sqlite.SQLiteDatabase;
 import android.os.Bundle;
 import android.support.design.widget.FloatingActionButton;
 import android.support.v7.app.AlertDialog;
@@ -12,14 +11,9 @@ import android.util.Log;
 import android.view.Menu;
 import android.view.View;
 import android.widget.EditText;
-import android.widget.TextView;
-
-import ca.jacobsm.todo.db.TaskContract;
-import ca.jacobsm.todo.db.TaskDBHelper;
 
 public class MainActivity extends AppCompatActivity {
     private static final String TAG = "MainActivity";
-    private TaskDBHelper mHelper;
     private RecyclerView mTaskListView;
     private ListAdapter mAdapter;
 
@@ -34,7 +28,6 @@ public class MainActivity extends AppCompatActivity {
         mAdapter = new ListAdapter(getApplicationContext());
         mTaskListView.setAdapter(mAdapter);
 
-
         FloatingActionButton addTaskButton = (FloatingActionButton)  findViewById(R.id.action_add_task);
         addTaskButton.setOnClickListener(new View.OnClickListener() {
             public void onClick(View v) {
@@ -43,10 +36,22 @@ public class MainActivity extends AppCompatActivity {
         });
     }
 
+    @Override
+    protected void onResume() {
+        super.onResume();
+        mAdapter.setOnItemClickListener(new
+            ListAdapter.TaskItemClickListener(){
+                @Override
+                public void onTaskItemClick(View view, int index) {
+                    Log.d(TAG,"Clicked item " + index);
+                }
+            });
+    }
+
     public void addTask(){
         final EditText taskEditText = new EditText(this);
         AlertDialog.Builder alertDialogBuilder = new AlertDialog.Builder(this)
-                .setTitle("Add task_row")
+                .setTitle("Add task")
                 .setView(taskEditText)
                 .setPositiveButton("Add", new DialogInterface.OnClickListener(){
                     @Override

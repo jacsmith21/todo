@@ -27,11 +27,10 @@ public class ListAdapter extends RecyclerView.Adapter<ListAdapter.ListViewHolder
     private LayoutInflater inflater;
     private ArrayList<RowDataObject> rowDataObjects;
     private SQLiteOpenHelper mHelper;
-    private ListAdapter mAdapter;
+    private TaskItemClickListener mOnClickListener;
 
     public ListAdapter(Context context) {
         inflater = LayoutInflater.from(context);
-
         mHelper = new TaskDBHelper(context);
         initUI(context);
     }
@@ -71,23 +70,35 @@ public class ListAdapter extends RecyclerView.Adapter<ListAdapter.ListViewHolder
         return rowDataObjects.size();
     }
 
+    public void setOnItemClickListener(TaskItemClickListener mOnClickListener) {
+        this.mOnClickListener = mOnClickListener;
+    }
+
+
     public void add(String task){
+        int index = getItemCount();
+        Log.d(TAG,"Inserting item at row " + index);
+
+        //Creating new row object
         RowDataObject rowDataObject = new RowDataObject(task);
 
+        //Adding to database
         SQLiteDatabase db = mHelper.getWritableDatabase();
         ContentValues values = new ContentValues();
         values.put(TaskContract.TaskEntry.COL_TASK_TITLE, task);
         db.insertWithOnConflict(TaskContract.TaskEntry.TABLE, null, values, SQLiteDatabase.CONFLICT_REPLACE);
         db.close();
 
-        int index = getItemCount();
+        //Adding to array list and notifying adapter
         rowDataObjects.add(rowDataObject);
         notifyItemInserted(index);
-
-        Log.d(TAG,"Inserting item at row " + index);
     }
 
     public void delete(int index){
+        Log.d(TAG,"Removing item at row " + index);
+
+        if(index == -1) return; //-1 is sent when the user clicks too fast while deleting
+
         String task = rowDataObjects.get(index).getTask();
         SQLiteDatabase db = mHelper.getWritableDatabase();
         db.delete(TaskContract.TaskEntry.TABLE, TaskContract.TaskEntry.COL_TASK_TITLE + " = ?",new String[]{task}); //DELETE taskTable WHERE tasks = task
@@ -95,7 +106,6 @@ public class ListAdapter extends RecyclerView.Adapter<ListAdapter.ListViewHolder
 
         rowDataObjects.remove(index);
         notifyItemRemoved(index);
-        Log.d(TAG,"Removing item at row " + index);
     }
 
     class ListViewHolder extends RecyclerView.ViewHolder implements View.OnClickListener {
@@ -107,16 +117,20 @@ public class ListAdapter extends RecyclerView.Adapter<ListAdapter.ListViewHolder
             super(itemView);
             taskTextView = (TextView) itemView.findViewById(R.id.task_title);
             deleteButton = (Button) itemView.findViewById(R.id.task_delete);
+            itemView.setOnClickListener(this);
             deleteButton.setOnClickListener(this);
             Log.d(TAG,"Creating view holder " + String.valueOf(taskTextView.getText()));
         }
 
         @Override
         public void onClick(View view){
-            Log.d(TAG,"Removing item " + String.valueOf(taskTextView.getText()));
-            if(view.equals(deleteButton)){
-                delete(getAdapterPosition());
-            }
+            int index = getAdapterPosition();
+            if(view.equals(deleteButton)) delete(index);
+            else mOnClickListener.onTaskItemClick(view, index);
         }
+    }
+
+    public interface TaskItemClickListener {
+        void onTaskItemClick(View view, int index);
     }
 }
