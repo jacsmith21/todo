@@ -5,27 +5,33 @@ import android.content.Context;
 import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
 import android.database.sqlite.SQLiteOpenHelper;
+import android.graphics.Color;
+import android.support.design.widget.Snackbar;
 import android.support.v7.widget.RecyclerView;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.Button;
 import android.widget.TextView;
 
 import java.util.ArrayList;
+import java.util.Collections;
 
 import ca.jacobsm.todo.db.TaskContract;
 import ca.jacobsm.todo.db.TaskDBHelper;
+import ca.jacobsm.todo.utilities.ItemTouchHelperAdapter;
+import ca.jacobsm.todo.utilities.ItemTouchHelperViewHolder;
+
+import static android.graphics.Color.LTGRAY;
 
 /**
  * Created by SDS on 4/16/2017.
  */
 
-public class ListAdapter extends RecyclerView.Adapter<ListAdapter.ListViewHolder> {
+public class ListAdapter extends RecyclerView.Adapter<ListAdapter.ListViewHolder> implements ItemTouchHelperAdapter {
     private static String TAG = "ListAdapter";
     private LayoutInflater inflater;
-    private ArrayList<RowDataObject> rowDataObjects;
+    private ArrayList<RowDataObject> mRowDataObjects;
     private SQLiteOpenHelper mHelper;
     private TaskItemClickListener mOnClickListener;
 
@@ -47,7 +53,7 @@ public class ListAdapter extends RecyclerView.Adapter<ListAdapter.ListViewHolder
             rowDataObjects.add(rowDataObject);
         }
 
-        this.rowDataObjects = rowDataObjects;
+        this.mRowDataObjects = rowDataObjects;
 
         cursor.close();
         db.close();
@@ -61,19 +67,18 @@ public class ListAdapter extends RecyclerView.Adapter<ListAdapter.ListViewHolder
 
     @Override
     public void onBindViewHolder(ListViewHolder holder, int position) {
-        String task = rowDataObjects.get(position).getTask();
+        String task = mRowDataObjects.get(position).getTask();
         holder.taskTextView.setText(task);
     }
 
     @Override
     public int getItemCount() {
-        return rowDataObjects.size();
+        return mRowDataObjects.size();
     }
 
     public void setOnItemClickListener(TaskItemClickListener mOnClickListener) {
         this.mOnClickListener = mOnClickListener;
     }
-
 
     public void add(String task){
         int index = getItemCount();
@@ -90,43 +95,84 @@ public class ListAdapter extends RecyclerView.Adapter<ListAdapter.ListViewHolder
         db.close();
 
         //Adding to array list and notifying adapter
-        rowDataObjects.add(rowDataObject);
+        mRowDataObjects.add(rowDataObject);
         notifyItemInserted(index);
     }
 
-    public void delete(int index){
+    @Override
+    public void onItemMove(int fromPosition, int toPosition) {
+        if (fromPosition < toPosition) {
+            for (int i = fromPosition; i < toPosition; i++) {
+                Collections.swap(mRowDataObjects, i, i + 1);
+            }
+        } else {
+            for (int i = fromPosition; i > toPosition; i--) {
+                Collections.swap(mRowDataObjects, i, i - 1);
+            }
+        }
+        notifyItemMoved(fromPosition, toPosition);
+        Log.d(TAG,"Moving item from " + fromPosition + " to " + toPosition);
+    }
+
+    @Override
+    public void onItemDismissed(final RecyclerView recyclerView, final RecyclerView.ViewHolder viewHolder) {
+        final int index = viewHolder.getAdapterPosition();
+        final RowDataObject rowDataObject = mRowDataObjects.get(index);
         Log.d(TAG,"Removing item at row " + index);
 
-        if(index == -1) return; //-1 is sent when the user clicks too fast while deleting
+        Snackbar snackbar = Snackbar
+                .make(recyclerView, "Task Removed", Snackbar.LENGTH_LONG)
+                .setAction("UNDO", new View.OnClickListener() {
+                    @Override
+                    public void onClick(View view){
+                        mRowDataObjects.add(index, rowDataObject);
+                        notifyItemInserted(index);
+                        recyclerView.scrollToPosition(index);
+                    }
+                });
+        snackbar.show();
 
-        String task = rowDataObjects.get(index).getTask();
-        SQLiteDatabase db = mHelper.getWritableDatabase();
-        db.delete(TaskContract.TaskEntry.TABLE, TaskContract.TaskEntry.COL_TASK_TITLE + " = ?",new String[]{task}); //DELETE taskTable WHERE tasks = task
-        db.close();
-
-        rowDataObjects.remove(index);
+        mRowDataObjects.remove(index);
         notifyItemRemoved(index);
     }
 
-    class ListViewHolder extends RecyclerView.ViewHolder implements View.OnClickListener {
+    /* Clears database then inserts current list of items */
+    public void updateDatabase(){
+        SQLiteDatabase db = mHelper.getWritableDatabase();
+        db.execSQL("DELETE FROM " + TaskContract.TaskEntry.TABLE);
+        for(RowDataObject rowDataObject : mRowDataObjects){
+            ContentValues values = new ContentValues();
+            values.put(TaskContract.TaskEntry.COL_TASK_TITLE, rowDataObject.getTask());
+            db.insertWithOnConflict(TaskContract.TaskEntry.TABLE, null, values, SQLiteDatabase.CONFLICT_REPLACE);
+        }
+    }
+
+    class ListViewHolder extends RecyclerView.ViewHolder implements View.OnClickListener, ItemTouchHelperViewHolder {
         static final String TAG = "ListViewHolder";
         TextView taskTextView;
-        Button deleteButton;
 
         public ListViewHolder(View itemView){
             super(itemView);
             taskTextView = (TextView) itemView.findViewById(R.id.task_title);
-            deleteButton = (Button) itemView.findViewById(R.id.task_delete);
             itemView.setOnClickListener(this);
-            deleteButton.setOnClickListener(this);
             Log.d(TAG,"Creating view holder " + String.valueOf(taskTextView.getText()));
         }
 
         @Override
         public void onClick(View view){
             int index = getAdapterPosition();
-            if(view.equals(deleteButton)) delete(index);
-            else mOnClickListener.onTaskItemClick(view, index);
+            mOnClickListener.onTaskItemClick(view, index);
+        }
+
+        @Override
+        public void onItemSelected() {
+            itemView.setBackgroundColor(Color.LTGRAY);
+
+        }
+
+        @Override
+        public void onItemClear() {
+            itemView.setBackgroundColor(0);
         }
     }
 
