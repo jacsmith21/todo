@@ -8,9 +8,9 @@
     tools:context="ca.jacobsm.todo.MainActivity">
 
     <android.support.v7.widget.RecyclerView
-        android:id="@+id/list"
+        android:id="@+id/item_list"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
+        android:layout_height="match_parent"
         android:scrollbars="vertical"
         android:paddingBottom="60dp"
         android:clipToPadding="false" />
@@ -24,6 +24,7 @@
         android:src="@android:drawable/ic_input_add"
         android:layout_margin="15dp"
         android:tint="@android:color/white"
+        android:backgroundTint="@color/colorAccent"
         app:fabSize="normal" />
 
 </android.support.design.widget.CoordinatorLayout>

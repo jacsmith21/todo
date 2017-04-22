@@ -4,10 +4,10 @@ package ca.jacobsm.todo;
  * Created by SDS on 4/16/2017.
  */
 
-public class RowDataObject {
+public class TaskObject implements RowObject {
     private String task;
 
-    public RowDataObject(String task) {
+    public TaskObject(String task) {
         this.task = task;
     }
 
