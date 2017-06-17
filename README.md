@@ -1,3 +1,3 @@
 # todo
 
-Basic android todo app built in Android Studio 2.3.1
+android todo app built in Android Studio 2.3.1
